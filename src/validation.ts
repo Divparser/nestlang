@@ -14,7 +14,41 @@ export type NestLangValidationResult = {
   errors: NestLangError[];
 };
 
-const allowedTypes = ["string", "number", "boolean", "object", "array", "Date"];
+// Mirrors scrape-engine's nestlangParser.js exactly (the real, executing
+// parser — this validator's only job is to catch mistakes before a job ever
+// runs, so drifting from what actually executes defeats the point).
+//
+// Scalar types: "text" is preferred; "string" is kept as a backward-
+// compatible alias (every pre-existing stored schema already writes
+// "(string)" literally). "link" returns an <a> element's href instead of its
+// visible text — the one type extraction treats specially. "date"/"datetime"
+// both normalize to the same date handling at runtime (nestlangParser.js
+// matches on `startsWith("date")`), so both are accepted here too.
+const scalarTypes = ["text", "string", "number", "boolean", "link", "date", "datetime"];
+// "object" is explicit; "array" alone (no ":subtype") is an implicit array of
+// objects, matching a bare "array" with child fields at runtime.
+const bareTypes = [...scalarTypes, "object", "array"];
+// "array:object" or "array:<any scalar>" — e.g. array:text, array:link,
+// array:number. The right-hand side is validated against the same scalar
+// list (plus "object"), never against bareTypes itself (no "array:array").
+const arraySubtypes = [...scalarTypes, "object"];
+
+function isAllowedType(rawType: string): boolean {
+  const type = rawType.toLowerCase();
+  if (bareTypes.includes(type)) return true;
+  // A format hint on a non-array date, e.g. "(datetime:ISO)" — the real
+  // parser's normalizeScalar() matches on startsWith("date") over the whole
+  // type string, colon and all, so this already works at runtime today.
+  // Only date/datetime get this leniency; every other scalar type must
+  // match exactly (a typo like "nubmer" should still be flagged, not
+  // silently accepted).
+  if (type.startsWith("date")) return true;
+  const colonIdx = type.indexOf(":");
+  if (colonIdx === -1) return false;
+  const base = type.slice(0, colonIdx);
+  const sub = type.slice(colonIdx + 1);
+  return base === "array" && arraySubtypes.includes(sub);
+}
 
 export function ValidateNestLang(text: string): NestLangValidationResult {
   const errors: NestLangError[] = [];
@@ -44,9 +78,9 @@ export function ValidateNestLang(text: string): NestLangValidationResult {
       }
 
       const [, key, _description, rawType] = match;
-      const type = rawType || "string";
+      const type = rawType || "text";
 
-      if (!allowedTypes.includes(type)) {
+      if (!isAllowedType(type)) {
         errors.push({
           code: "INVALID_TYPE",
           message: `Invalid type '${type}' for key '${key}'.`,
@@ -91,9 +125,9 @@ export function ValidateNestLang(text: string): NestLangValidationResult {
       }
 
       const [, key, description, rawType] = match;
-      const type = rawType || "string";
+      const type = rawType || "text";
 
-      if (!allowedTypes.includes(type)) {
+      if (!isAllowedType(type)) {
         errors.push({
           code: "INVALID_TYPE",
           message: `Invalid type '${type}' for field '${key}'.`,

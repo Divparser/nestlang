@@ -17,6 +17,20 @@ declarative extraction language for structured scraping and data extraction.
 npm install nestlang
 ```
 
+## Supported types
+
+| Type | Meaning |
+| --- | --- |
+| `text` | Visible text content (the default when a field has no type and no children) |
+| `string` | Alias for `text`, kept for older schemas — `text` is preferred going forward |
+| `link` | An `<a>` element's `href`, instead of its visible text — use this for URL fields |
+| `number` | A numeric value |
+| `boolean` | A true/false value |
+| `date` | A date/time value — `datetime` is accepted as an alias, and a format hint may follow a colon, e.g. `(date:ISO)` |
+| `object` | A nested group of fields (implicit when a field has children and no type) |
+| `array` | A repeating list of objects (implicit when a field has children, a type of `array`, and no `:subtype`) |
+| `array:<type>` | A repeating list of a specific type — `array:object`, `array:text`, `array:link`, `array:number`, `array:boolean`, `array:date` |
+
 ## Usage
 
 Import the utilities from the package and use them directly.
@@ -27,8 +41,9 @@ Validate a NestLang specification:
 import { ValidateNestLang } from "nestlang";
 
 const spec = `
-products: the top 10 products (array)
-  -name: Product name (string)
+products: the top 10 products (array:object)
+  -name: Product name (text)
+  -url: Product page (link)
   -price: Product price (number)
   -in_stock: Whether the product is in stock (boolean)
 `;
@@ -60,8 +75,9 @@ Child fields:
 can have descriptions and optional types
 
 ```js
-products: the top 10 products (array)
-  -name: Product name (string)
+products: the top 10 products (array:object)
+  -name: Product name (text)
+  -url: Product page (link)
   -price: Product price (number)
   -rating: Product rating (number)
 ```
@@ -70,7 +86,7 @@ products: the top 10 products (array)
 
 ```js
 products: (array)
-  name: Product name (string)
+  name: Product name (text)
 ```
 This will produce something like:
 
@@ -88,14 +104,15 @@ const builder = new ExampleBuilder();
 builder.add({
   title: "Product List Example",
   nestlang: `
-products: the top 10 products (array)
-  -name: Product name (string)
+products: the top 10 products (array:object)
+  -name: Product name (text)
+  -url: Product page (link)
   -price: Product price (number)
 `,
   json: {
-    products: [{ name: "Sample", price: 9.99 }]
+    products: [{ name: "Sample", url: "https://example.com/sample", price: 9.99 }]
   },
-  notes: ["Basic product list example with name and price fields."]
+  notes: ["Basic product list example with name, link, and price fields."]
 });
 
 const examples = builder.buildAll();

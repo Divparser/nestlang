@@ -1,6 +1,6 @@
 {
   "name": "@divparser/nestlang",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "type": "module",
   "description":"A minimal builder for NestLang — a declarative extraction language.",
   "main": "dist/index.js",
@@ -14,11 +14,12 @@
   "keywords": ["scraping", "dsl", "nestlang", "parser"], 
   "author": "Solomon Williams", 
   "license": "MIT",
-  "exports": { 
-    ".": { 
-      "import": "./dist/index.js", 
-      "types": "./dist/index.d.ts" 
-      } 
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "require": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+      }
   },
   "devDependencies": {
     "ts-node": "^10.9.2",
